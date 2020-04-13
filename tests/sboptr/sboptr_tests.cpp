@@ -4,7 +4,7 @@
 #include <optional>
 #include <tuple>
 
-#include <catch/catch.hpp>
+#include <catch2/catch.hpp>
 #include "sboptr/sboptr.hpp"
 
 namespace {
@@ -30,7 +30,7 @@ class new_base {
         return std::find_if(
             new_buffers.begin(),
             new_buffers.end(),
-            [=](auto const& buff) { return buff.has_value() and &*buff == ptr; });
+            [=](auto const& buff) { return buff.has_value() && &*buff == ptr; });
     }
 
     /** Dynamic allocation */
@@ -39,7 +39,7 @@ class new_base {
         auto const iter = std::find_if(
             new_buffers.begin(),
             new_buffers.end(),
-            [](auto const& buff) { return not buff.has_value(); });
+            [](auto const& buff) { return !buff.has_value(); });
         REQUIRE(iter != new_buffers.end());
         return &iter->emplace();
     }
@@ -60,63 +60,63 @@ class new_base {
     }
 };
 
-class impl_a : public interface, public new_base<impl_a> {
+class interface_impl_a : public interface, public new_base<interface_impl_a> {
   public:
-    using new_base<impl_a>::operator new;
-    using new_base<impl_a>::operator delete;
+    using new_base<interface_impl_a>::operator new;
+    using new_base<interface_impl_a>::operator delete;
 
     static constexpr auto foo_constant = 1;
 
     std::string str;
 
-    explicit impl_a(std::string str) : str{std::move(str)} {}
+    explicit interface_impl_a(std::string str) : str{std::move(str)} {}
 
-    friend auto operator==(impl_a const& lhs, impl_a const& rhs) noexcept -> bool {
+    friend auto operator==(interface_impl_a const& lhs, interface_impl_a const& rhs) noexcept -> bool {
         return lhs.str == rhs.str;
     }
 
     auto foo() const noexcept -> int override { return foo_constant; }
 };
 
-class impl_b : public interface, public new_base<impl_b> {
+class interface_impl_b : public interface, public new_base<interface_impl_b> {
   public:
-    using new_base<impl_b>::operator new;
-    using new_base<impl_b>::operator delete;
+    using new_base<interface_impl_b>::operator new;
+    using new_base<interface_impl_b>::operator delete;
 
     static constexpr auto foo_constant = 2;
 
     std::string str_a;
     std::string str_b;
 
-    impl_b(std::string str_a, std::string str_b)
+    interface_impl_b(std::string str_a, std::string str_b)
         : str_a{std::move(str_a)}, str_b{std::move(str_b)} {}
 
-    friend auto operator==(impl_b const& lhs, impl_b const& rhs) noexcept -> bool {
-        return lhs.str_a == rhs.str_a and lhs.str_b == lhs.str_b;
+    friend auto operator==(interface_impl_b const& lhs, interface_impl_b const& rhs) noexcept -> bool {
+        return lhs.str_a == rhs.str_a && lhs.str_b == lhs.str_b;
     }
 
     auto foo() const noexcept -> int override { return foo_constant; }
 };
 
-class copy_throw_impl : public interface, public new_base<copy_throw_impl> {
+class interface_copy_throw_impl : public interface, public new_base<interface_copy_throw_impl> {
   public:
-    using new_base<copy_throw_impl>::operator new;
-    using new_base<copy_throw_impl>::operator delete;
+    using new_base<interface_copy_throw_impl>::operator new;
+    using new_base<interface_copy_throw_impl>::operator delete;
 
     static constexpr auto foo_constant = 3;
 
     std::string str;
 
-    explicit copy_throw_impl(std::string str)
+    explicit interface_copy_throw_impl(std::string str)
         : str{std::move(str)} {}
 
-    copy_throw_impl(copy_throw_impl const&) {
+    interface_copy_throw_impl(interface_copy_throw_impl const&) {
         throw std::runtime_error{""};
     }
 
-    copy_throw_impl(copy_throw_impl&&) noexcept = default;
+    interface_copy_throw_impl(interface_copy_throw_impl&&) noexcept = default;
 
-    friend auto operator==(copy_throw_impl const& lhs, copy_throw_impl const& rhs) noexcept -> bool {
+    friend auto operator==(interface_copy_throw_impl const& lhs, interface_copy_throw_impl const& rhs) noexcept -> bool {
         return lhs.str == rhs.str;
     }
 
@@ -144,36 +144,36 @@ using alloc_ptrs_small = tuple_append_t<
     sboptr::pinned_sbo_ptr<interface>,
     alloc_move_ptrs_small>;
 
-using no_alloc_copy_ptrs_medium = std::tuple<sboptr::no_alloc_sbo_ptr<interface, sizeof(impl_a)>>;
+using no_alloc_copy_ptrs_medium = std::tuple<sboptr::no_alloc_sbo_ptr<interface, sizeof(interface_impl_a)>>;
 using no_alloc_move_ptrs_medium = tuple_append_t<
-    sboptr::unique_no_alloc_sbo_ptr<interface, sizeof(impl_a)>,
+    sboptr::unique_no_alloc_sbo_ptr<interface, sizeof(interface_impl_a)>,
     no_alloc_copy_ptrs_medium>;
 using no_alloc_ptrs_medium = tuple_append_t<
-    sboptr::pinned_no_alloc_sbo_ptr<interface, sizeof(impl_a)>,
+    sboptr::pinned_no_alloc_sbo_ptr<interface, sizeof(interface_impl_a)>,
     no_alloc_move_ptrs_medium>;
 
-using alloc_copy_ptrs_medium = std::tuple<sboptr::sbo_ptr<interface, sizeof(impl_a)>>;
+using alloc_copy_ptrs_medium = std::tuple<sboptr::sbo_ptr<interface, sizeof(interface_impl_a)>>;
 using alloc_move_ptrs_medium = tuple_append_t<
-    sboptr::unique_sbo_ptr<interface, sizeof(impl_a)>,
+    sboptr::unique_sbo_ptr<interface, sizeof(interface_impl_a)>,
     alloc_copy_ptrs_medium>;
 using alloc_ptrs_medium = tuple_append_t<
-    sboptr::pinned_sbo_ptr<interface, sizeof(impl_a)>,
+    sboptr::pinned_sbo_ptr<interface, sizeof(interface_impl_a)>,
     alloc_move_ptrs_medium>;
 
-using no_alloc_copy_ptrs_big = std::tuple<sboptr::no_alloc_sbo_ptr<interface, sizeof(impl_b)>>;
+using no_alloc_copy_ptrs_big = std::tuple<sboptr::no_alloc_sbo_ptr<interface, sizeof(interface_impl_b)>>;
 using no_alloc_move_ptrs_big = tuple_append_t<
-    sboptr::unique_no_alloc_sbo_ptr<interface, sizeof(impl_b)>,
+    sboptr::unique_no_alloc_sbo_ptr<interface, sizeof(interface_impl_b)>,
     no_alloc_copy_ptrs_big>;
 using no_alloc_ptrs_big = tuple_append_t<
-    sboptr::pinned_no_alloc_sbo_ptr<interface, sizeof(impl_b)>,
+    sboptr::pinned_no_alloc_sbo_ptr<interface, sizeof(interface_impl_b)>,
     no_alloc_move_ptrs_big>;
 
-using alloc_copy_ptrs_big = std::tuple<sboptr::sbo_ptr<interface, sizeof(impl_b)>>;
+using alloc_copy_ptrs_big = std::tuple<sboptr::sbo_ptr<interface, sizeof(interface_impl_b)>>;
 using alloc_move_ptrs_big = tuple_append_t<
-    sboptr::unique_sbo_ptr<interface, sizeof(impl_b)>,
+    sboptr::unique_sbo_ptr<interface, sizeof(interface_impl_b)>,
     alloc_copy_ptrs_big>;
 using alloc_ptrs_big = tuple_append_t<
-    sboptr::pinned_sbo_ptr<interface, sizeof(impl_b)>,
+    sboptr::pinned_sbo_ptr<interface, sizeof(interface_impl_b)>,
     alloc_move_ptrs_big>;
 
 using copy_ptrs_small = tuple_cat_t<
@@ -256,8 +256,8 @@ constexpr auto long_string_2
       "Nunc non diam eget sapien finibus consectetur a eget arcu.";
 
 
-auto const impl_a = impl_a{long_string};
-auto const impl_b = impl_b{long_string, long_string_2};
+auto const impl_a = interface_impl_a{long_string};
+auto const impl_b = interface_impl_b{long_string, long_string_2};
 
 }
 
@@ -313,17 +313,17 @@ TEST_CASE("Constructing objects in small buffer") {
     SECTION("In place construction") {
         tuple_for_each(ptrs_medium{}, [](auto const& ptr) {
             using ptr_t = std::decay_t<decltype(ptr)>;
-            auto ptr_holding_a = ptr_t{std::in_place_type<impl_a>, long_string};
+            auto ptr_holding_a = ptr_t{std::in_place_type<interface_impl_a>, long_string};
             check_impl_is_constructed(impl_a, false, ptr_holding_a);
         });
 
         tuple_for_each(ptrs_big{}, [](auto const& ptr) {
             using ptr_t = std::decay_t<decltype(ptr)>;
-            auto ptr_holding_a = ptr_t{std::in_place_type<impl_a>, long_string};
+            auto ptr_holding_a = ptr_t{std::in_place_type<interface_impl_a>, long_string};
             check_impl_is_constructed(impl_a, false, ptr_holding_a);
 
             auto ptr_holding_b = ptr_t{
-                std::in_place_type<impl_b>,
+                std::in_place_type<interface_impl_b>,
                 long_string,
                 long_string_2,
             };
@@ -331,11 +331,11 @@ TEST_CASE("Constructing objects in small buffer") {
         });
     }
 
-    SECTION("Emplace and assign") {
+    SECTION("Emplace && assign") {
         auto medium_ptrs = ptrs_medium{};
 
         tuple_for_each(medium_ptrs, [](auto& ptr) {
-            ptr.template emplace<impl_a>(long_string);
+            ptr.template emplace<interface_impl_a>(long_string);
             check_impl_is_constructed(impl_a, false, ptr);
             ptr = nullptr;
             check_empty(ptr);
@@ -348,7 +348,7 @@ TEST_CASE("Constructing objects in small buffer") {
         auto big_ptrs = ptrs_big{};
 
         tuple_for_each(big_ptrs, [](auto& ptr) {
-            ptr.template emplace<impl_a>(long_string);
+            ptr.template emplace<interface_impl_a>(long_string);
             check_impl_is_constructed(impl_a, false, ptr);
             ptr = nullptr;
             check_empty(ptr);
@@ -357,7 +357,7 @@ TEST_CASE("Constructing objects in small buffer") {
             ptr.reset();
             check_empty(ptr);
 
-            ptr.template emplace<impl_b>(long_string, long_string_2);
+            ptr.template emplace<interface_impl_b>(long_string, long_string_2);
             check_impl_is_constructed(impl_b, false, ptr);
             ptr = nullptr;
             check_empty(ptr);
@@ -391,7 +391,7 @@ TEST_CASE("Constructing objects in dynamic storage") {
         tuple_for_each(alloc_ptrs_medium{}, [](auto const& ptr) {
             using ptr_t = std::decay_t<decltype(ptr)>;
             auto ptr_holding_b = ptr_t{
-                std::in_place_type<impl_b>,
+                std::in_place_type<interface_impl_b>,
                 long_string,
                 long_string_2,
             };
@@ -400,11 +400,11 @@ TEST_CASE("Constructing objects in dynamic storage") {
 
         tuple_for_each(alloc_ptrs_small{}, [](auto const& ptr) {
             using ptr_t = std::decay_t<decltype(ptr)>;
-            auto ptr_holding_a = ptr_t{std::in_place_type<impl_a>, long_string};
+            auto ptr_holding_a = ptr_t{std::in_place_type<interface_impl_a>, long_string};
             check_impl_is_constructed(impl_a, true, ptr_holding_a);
 
             auto ptr_holding_b = ptr_t{
-                std::in_place_type<impl_b>,
+                std::in_place_type<interface_impl_b>,
                 long_string,
                 long_string_2,
             };
@@ -412,11 +412,11 @@ TEST_CASE("Constructing objects in dynamic storage") {
         });
     }
 
-    SECTION("Emplace and assign") {
+    SECTION("Emplace && assign") {
         auto medium_ptrs = alloc_ptrs_medium{};
 
         tuple_for_each(medium_ptrs, [](auto& ptr) {
-            ptr.template emplace<impl_a>(long_string);
+            ptr.template emplace<interface_impl_a>(long_string);
             check_impl_is_constructed(impl_a, false, ptr);
             ptr = nullptr;
             check_empty(ptr);
@@ -425,7 +425,7 @@ TEST_CASE("Constructing objects in dynamic storage") {
             ptr.reset();
             check_empty(ptr);
 
-            ptr.template emplace<impl_b>(long_string, long_string_2);
+            ptr.template emplace<interface_impl_b>(long_string, long_string_2);
             check_impl_is_constructed(impl_b, true, ptr);
             ptr = nullptr;
             check_empty(ptr);
@@ -438,7 +438,7 @@ TEST_CASE("Constructing objects in dynamic storage") {
         auto small_ptrs = alloc_ptrs_small{};
 
         tuple_for_each(small_ptrs, [](auto& ptr) {
-            ptr.template emplace<impl_a>(long_string);
+            ptr.template emplace<interface_impl_a>(long_string);
             check_impl_is_constructed(impl_a, true, ptr);
             ptr = nullptr;
             check_empty(ptr);
@@ -447,7 +447,7 @@ TEST_CASE("Constructing objects in dynamic storage") {
             ptr.reset();
             check_empty(ptr);
 
-            ptr.template emplace<impl_b>(long_string, long_string_2);
+            ptr.template emplace<interface_impl_b>(long_string, long_string_2);
             check_impl_is_constructed(impl_b, true, ptr);
             ptr = nullptr;
             check_empty(ptr);
@@ -606,8 +606,8 @@ TEST_CASE("Copy pointers with active small buffer storage") {
     SECTION("Strong exception guarantee") {
         tuple_for_each(copy_ptrs_medium{}, [](auto const& ptr) {
             using ptr_t = std::decay_t<decltype(ptr)>;
-            auto const impl = copy_throw_impl{long_string};
-            auto ptr1 = ptr_t{copy_throw_impl{long_string}};
+            auto const impl = interface_copy_throw_impl{long_string};
+            auto ptr1 = ptr_t{interface_copy_throw_impl{long_string}};
             check_impl_is_constructed(impl, false, ptr1);
             auto ptr2 = ptr_t{};
 
@@ -666,8 +666,8 @@ TEST_CASE("Copy pointers with active dynamic storage") {
     SECTION("Strong exception guarantee") {
         tuple_for_each(alloc_copy_ptrs_small{}, [](auto const& ptr) {
             using ptr_t = std::decay_t<decltype(ptr)>;
-            auto const impl = copy_throw_impl{long_string};
-            auto ptr1 = ptr_t{copy_throw_impl{long_string}};
+            auto const impl = interface_copy_throw_impl{long_string};
+            auto ptr1 = ptr_t{interface_copy_throw_impl{long_string}};
             check_impl_is_constructed(impl, true, ptr1);
             auto ptr2 = ptr_t{};
             CHECK_THROWS(ptr2 = ptr1);
@@ -691,8 +691,8 @@ TEST_CASE("Copy pointers with active dynamic storage") {
 
         tuple_for_each(alloc_copy_ptrs_medium{}, [](auto const& ptr) {
             using ptr_t = std::decay_t<decltype(ptr)>;
-            auto const impl = copy_throw_impl{long_string};
-            auto ptr1 = ptr_t{copy_throw_impl{long_string}};
+            auto const impl = interface_copy_throw_impl{long_string};
+            auto ptr1 = ptr_t{interface_copy_throw_impl{long_string}};
             check_impl_is_constructed(impl, false, ptr1);
             auto ptr2 = ptr_t{};
             CHECK_THROWS(ptr2 = ptr1);

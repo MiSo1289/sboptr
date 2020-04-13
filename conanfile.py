@@ -6,7 +6,7 @@ class SboPtr(ConanFile):
     version = "0.1"
     revision_mode = "scm"
     settings = "os", "compiler", "build_type", "arch"
-    generators = "cmake"
+    generators = "cmake_paths"
     exports_sources = (
         "include/*",
         "tests/*",
