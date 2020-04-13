@@ -4,10 +4,14 @@ from conans import CMake, ConanFile, tools
 class SboPtr(ConanFile):
     name = "sboptr"
     version = "0.1"
+    url = "https://github.com/MiSo1289/sboptr"
+    license = "MIT"
+    description = "Smart pointer type with configurable small buffer storage"
     revision_mode = "scm"
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake_paths"
     exports_sources = (
+        "examples/*",
         "include/*",
         "tests/*",
         "CMakeLists.txt",
@@ -19,8 +23,9 @@ class SboPtr(ConanFile):
     def build(self):
         cmake = CMake(self)
 
+        cmake.definitions["CMAKE_TOOLCHAIN_FILE"] = "conan_paths.cmake"
         cmake.configure()
-        cmake.build()
+        cmake.build(target="sboptr_tests")
         
         if tools.get_env("CONAN_RUN_TESTS", True):
             cmake.test()
