@@ -4,7 +4,7 @@ and value semantics.
 
 ## Installation
 The library is a single header file, so you can just steal that.
-Using conan, clone the repository and run `conan create .`.
+Using conan, clone the repository and run `conan create .`
 
 ## Example
 ```c++
