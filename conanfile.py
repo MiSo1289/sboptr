@@ -3,7 +3,7 @@ from conans import CMake, ConanFile, tools
 
 class SboPtr(ConanFile):
     name = "sboptr"
-    version = "0.1"
+    version = "0.2.0"
     url = "https://github.com/MiSo1289/sboptr"
     license = "MIT"
     description = "Smart pointer type with configurable small buffer storage"

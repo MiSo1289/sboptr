@@ -4,7 +4,7 @@ and value semantics.
 
 ## Installation
 The library is a single header file, so you can just steal that.
-Using conan, clone the repository and run `conan create . sboptr/0.1`.
+Using conan, clone the repository and run `conan create .`.
 
 ## Example
 ```c++
@@ -29,9 +29,9 @@ struct big_impl : public interface {
 using my_pointer_type = sboptr::basic_sbo_ptr<
 	interface,
 	/* size of small buffer */ sizeof(void*) * 2,
-	/* enable move */ true,
-	/* enable copy */ true,
-	/* enable heap storage */ true>;
+	sboptr::movable
+    | sboptr::copyable
+    | sboptr::allow_heap>;
 
 // Does not allocate
 my_pointer_type a = small_impl{10};

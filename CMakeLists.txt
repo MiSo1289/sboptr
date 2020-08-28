@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.13)
-project(SboPtr VERSION 0.1)
+project(SboPtr VERSION 0.2.0)
 
 enable_testing()
 
-find_package(Catch2 CONFIG REQUIRED)
+find_package(Catch2 REQUIRED)
 
 add_library(sboptr INTERFACE)
 add_library(sboptr::sboptr ALIAS sboptr)

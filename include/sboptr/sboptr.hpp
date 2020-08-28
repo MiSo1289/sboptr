@@ -7,6 +7,13 @@
 
 namespace sboptr
 {
+    using sbo_ptr_options = unsigned;
+
+    inline constexpr auto no_options = sbo_ptr_options{};
+    inline constexpr auto movable = sbo_ptr_options{1u << 0u};
+    inline constexpr auto copyable = sbo_ptr_options{1u << 1u};
+    inline constexpr auto allow_heap = sbo_ptr_options{1u << 2u};
+
     namespace detail
     {
         template <typename Base, bool enable_move, bool enable_copy, bool enable_heap>
@@ -166,6 +173,11 @@ namespace sboptr
         {
         };
 
+        template <typename Base, std::size_t sbo_size, sbo_ptr_options opts, typename Derived, typename... Args>
+        struct can_emplace_opts : can_emplace<Base, sbo_size, opts & movable, opts & copyable, opts & allow_heap, Derived, Args...>
+        {
+        };
+
         template <typename Base, std::size_t sbo_size, bool enable_move, bool enable_copy, bool enable_heap, typename Derived, typename... Args>
         struct can_nothrow_emplace;
 
@@ -180,6 +192,11 @@ namespace sboptr
           : std::conjunction<
                 std::is_nothrow_constructible<Derived, Args&&...>,
                 std::bool_constant<(sizeof(Derived) <= sbo_size)>>
+        {
+        };
+
+        template <typename Base, std::size_t sbo_size, sbo_ptr_options opts, typename Derived, typename... Args>
+        struct can_nothrow_emplace_opts : can_nothrow_emplace<Base, sbo_size, opts & movable, opts & copyable, opts & allow_heap, Derived, Args...>
         {
         };
 
@@ -650,13 +667,15 @@ namespace sboptr
             std::aligned_storage_t<sbo_size> sbo_buffer_;
         };
 
+        template <typename T, std::size_t sbo_size, sbo_ptr_options opts>
+        using sbo_ptr_base_for_opts = sbo_ptr_base<T, sbo_size, opts & movable, opts & copyable, opts & allow_heap>;
     }  // namespace detail
 
-    template <typename T, std::size_t sbo_size, bool enable_move, bool enable_copy, bool enable_heap>
-    class basic_sbo_ptr : private detail::sbo_ptr_base<T, sbo_size, enable_move, enable_copy, enable_heap>
+    template <typename T, std::size_t sbo_size, sbo_ptr_options opts>
+    class basic_sbo_ptr : private detail::sbo_ptr_base_for_opts<T, sbo_size, opts>
     {
       private:
-        using Base = detail::sbo_ptr_base<T, sbo_size, enable_move, enable_copy, enable_heap>;
+        using Base = detail::sbo_ptr_base_for_opts<T, sbo_size, opts>;
 
       public:
         using pointer = T*;
@@ -664,30 +683,30 @@ namespace sboptr
 
         basic_sbo_ptr() noexcept = default;
 
-        basic_sbo_ptr(std::nullptr_t) noexcept {}
+        basic_sbo_ptr(std::nullptr_t) noexcept { }
 
         using Base::Base;
 
         template <typename U,
                   typename... Args,
                   typename = std::enable_if_t<
-                      detail::can_emplace<T, sbo_size, enable_move, enable_copy, enable_heap, U, Args&&...>::value>>
-        explicit basic_sbo_ptr(std::in_place_type_t<U>, Args&&... args) noexcept(detail::can_nothrow_emplace<T, sbo_size, enable_move, enable_copy, enable_heap, U, Args&&...>::value)
+                      detail::can_emplace_opts<T, sbo_size, opts, U, Args&&...>::value>>
+        explicit basic_sbo_ptr(std::in_place_type_t<U>, Args&&... args) noexcept(detail::can_nothrow_emplace_opts<T, sbo_size, opts, U, Args&&...>::value)
         {
             Base::template construct<U>(std::forward<Args>(args)...);
         }
 
         template <typename U,
                   typename = std::enable_if_t<
-                      !std::is_same_v<std::decay_t<U>, basic_sbo_ptr> && detail::can_emplace<T, sbo_size, enable_move, enable_copy, enable_heap, std::decay_t<U>, U&&>::value>>
-        basic_sbo_ptr(U&& value) noexcept(detail::can_nothrow_emplace<T, sbo_size, enable_move, enable_copy, enable_heap, std::decay_t<U>, U&&>::value)
+                      !std::is_same_v<std::decay_t<U>, basic_sbo_ptr> && detail::can_emplace_opts<T, sbo_size, opts, std::decay_t<U>, U&&>::value>>
+        basic_sbo_ptr(U&& value) noexcept(detail::can_nothrow_emplace_opts<T, sbo_size, opts, std::decay_t<U>, U&&>::value)
           : basic_sbo_ptr{std::in_place_type<std::decay_t<U>>, std::forward<U>(value)}
         {
         }
 
         template <typename U,
                   typename = std::enable_if_t<
-                      std::is_same_v<U, std::decay_t<U>> && !std::is_same_v<U, basic_sbo_ptr> && detail::can_emplace<T, sbo_size, enable_move, enable_copy, enable_heap, std::decay_t<U>, U&&>::value>>
+                      std::is_same_v<U, std::decay_t<U>> && !std::is_same_v<U, basic_sbo_ptr> && detail::can_emplace_opts<T, sbo_size, opts, std::decay_t<U>, U&&>::value>>
         auto operator=(U&& other) noexcept -> basic_sbo_ptr&
         {
             Base::destroy();
@@ -697,8 +716,8 @@ namespace sboptr
 
         template <typename U,
                   typename = std::enable_if_t<
-                      !std::is_same_v<U, basic_sbo_ptr> && detail::can_emplace<T, sbo_size, enable_move, enable_copy, enable_heap, U, U const&>::value>>
-        auto operator=(U const& other) noexcept(detail::can_nothrow_emplace<T, sbo_size, enable_move, enable_copy, enable_heap, U, U const&>::value) -> basic_sbo_ptr&
+                      !std::is_same_v<U, basic_sbo_ptr> && detail::can_emplace_opts<T, sbo_size, opts, U, U const&>::value>>
+        auto operator=(U const& other) noexcept(detail::can_nothrow_emplace_opts<T, sbo_size, opts, U, U const&>::value) -> basic_sbo_ptr&
         {
             // Strong exception guarantee
             return (*this = U{other});
@@ -712,8 +731,8 @@ namespace sboptr
 
         template <typename U,
                   typename... Args,
-                  typename = std::enable_if_t<detail::can_emplace<T, sbo_size, enable_move, enable_copy, enable_heap, U, Args&&...>::value>>
-        void emplace(Args&&... args) noexcept(detail::can_nothrow_emplace<T, sbo_size, enable_move, enable_copy, enable_heap, U, Args&&...>::value)
+                  typename = std::enable_if_t<detail::can_emplace_opts<T, sbo_size, opts, U, Args&&...>::value>>
+        void emplace(Args&&... args) noexcept(detail::can_nothrow_emplace_opts<T, sbo_size, opts, U, Args&&...>::value)
         {
             // Emplace cannot provide strong exception guarantee
             Base::destroy();
@@ -745,12 +764,12 @@ namespace sboptr
             return *get();
         }
 
-        [[nodiscard]] auto operator-> () noexcept -> T*
+        [[nodiscard]] auto operator->() noexcept -> T*
         {
             return get();
         }
 
-        [[nodiscard]] auto operator-> () const noexcept -> T const*
+        [[nodiscard]] auto operator->() const noexcept -> T const*
         {
             return get();
         }
@@ -792,20 +811,20 @@ namespace sboptr
     };
 
     template <typename T, std::size_t sbo_size = sizeof(T)>
-    using pinned_sbo_ptr = basic_sbo_ptr<T, sbo_size, false, false, true>;
+    using pinned_sbo_ptr = basic_sbo_ptr<T, sbo_size, allow_heap>;
 
     template <typename T, std::size_t sbo_size = sizeof(T)>
-    using pinned_no_alloc_sbo_ptr = basic_sbo_ptr<T, sbo_size, false, false, false>;
+    using pinned_no_alloc_sbo_ptr = basic_sbo_ptr<T, sbo_size, no_options>;
 
     template <typename T, std::size_t sbo_size = sizeof(T)>
-    using unique_sbo_ptr = basic_sbo_ptr<T, sbo_size, true, false, true>;
+    using unique_sbo_ptr = basic_sbo_ptr<T, sbo_size, movable | allow_heap>;
 
     template <typename T, std::size_t sbo_size = sizeof(T)>
-    using unique_no_alloc_sbo_ptr = basic_sbo_ptr<T, sbo_size, true, false, false>;
+    using unique_no_alloc_sbo_ptr = basic_sbo_ptr<T, sbo_size, movable>;
 
     template <typename T, std::size_t sbo_size = sizeof(T)>
-    using sbo_ptr = basic_sbo_ptr<T, sbo_size, true, true, true>;
+    using sbo_ptr = basic_sbo_ptr<T, sbo_size, movable | copyable | allow_heap>;
 
     template <typename T, std::size_t sbo_size = sizeof(T)>
-    using no_alloc_sbo_ptr = basic_sbo_ptr<T, sbo_size, true, true, false>;
+    using no_alloc_sbo_ptr = basic_sbo_ptr<T, sbo_size, movable | copyable>;
 }  // namespace sboptr
