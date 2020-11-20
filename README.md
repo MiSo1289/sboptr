@@ -56,7 +56,7 @@ struct no_copy_impl : public interface {
 
 // Define another pointer type that can not be copied
 // and never allocates;
-// Equivalent to basic_sbo_ptr<T, size, true, false, false>
+// Equivalent to sboptr::basic_sbo_ptr<T, size, sboptr::movable>
 using other_pointer_type = sboptr::unique_no_alloc_sbo_ptr<interface, sizeof(void*) * 2>;
 
 other_pointer_type c = no_copy_impl{std::make_unique<int>(20)};
