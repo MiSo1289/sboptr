@@ -3,8 +3,9 @@ C++ smart pointer type with configurable small buffer storage
 and value semantics.
 
 ## Installation
-The library is a single header file, so you can just steal that.
-Using conan, clone the repository and run `conan create .`
+The library is a single header file, so you can just download that.
+
+Using conan, you can get it from [my bintray repository](https://bintray.com/miso1289/public-conan).
 
 ## Example
 ```c++
